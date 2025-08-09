@@ -45,10 +45,16 @@ class LoadedModule:
 
 
 def _import_models(repo_path: str, module_hint: Optional[str]) -> LoadedModule:
-    # MVP: rely on current working dir being project root; import by dotted module_hint
-    sys_path_added = False
     if not module_hint:
         raise RuntimeError("module_hint is required for SQLAlchemy adapter in MVP")
+    abs_repo = os.path.abspath(repo_path) if repo_path else None
+    sys_path_added = False
+    if abs_repo and abs_repo not in sys.path:
+        sys.path.insert(0, abs_repo)
+        sys_path_added = True
+    # Ensure a fresh import for base vs head to avoid caching collisions
+    if module_hint in sys.modules:
+        del sys.modules[module_hint]
     module = importlib.import_module(module_hint)
     return LoadedModule(module=module, sys_path_added=sys_path_added)
 
@@ -60,8 +66,11 @@ class SQLAlchemyAdapter(SchemaAdapter):
             Base = getattr(loaded.module, "Base")
             metadata = Base.metadata
         finally:
-            # keep sys.path modification for subsequent import of head/base pairs
-            pass
+            # cleanup: remove imported module and sys.path insertion to avoid cross-tree bleed
+            if module_hint in sys.modules:
+                del sys.modules[module_hint]
+            if loaded.sys_path_added and sys.path and sys.path[0] == os.path.abspath(repo_path):
+                sys.path.pop(0)
 
         tables: Dict[str, Table] = {}
         for tname, satable in metadata.tables.items():
