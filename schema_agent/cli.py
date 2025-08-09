@@ -63,6 +63,12 @@ def diff(
         Path(out_dir).mkdir(parents=True, exist_ok=True)
         (Path(out_dir) / "forward.sql").write_text(forward_sql)
         (Path(out_dir) / "rollback.sql").write_text(rollback_sql)
+        # Debug: dump IRs for troubleshooting in CI
+        try:
+            (Path(out_dir) / "ir_base.json").write_text(base_ir.model_dump_json(indent=2))
+            (Path(out_dir) / "ir_head.json").write_text(head_ir.model_dump_json(indent=2))
+        except Exception:
+            pass
 
     # Optionally enforce fail_on_unsafe if planner flagged dangerous ops
     if fail_on_unsafe and summary.get("unsafe", False):
