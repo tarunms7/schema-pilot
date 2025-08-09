@@ -42,6 +42,7 @@ def _compile_default(default) -> Optional[str]:
 class LoadedModule:
     module: ModuleType
     sys_path_added: bool
+    inserted_path: Optional[str] = None
 
 
 def _purge_package_cache(module_hint: str) -> None:
@@ -59,13 +60,15 @@ def _import_models(repo_path: str, module_hint: Optional[str]) -> LoadedModule:
         raise RuntimeError("module_hint is required for SQLAlchemy adapter in MVP")
     abs_repo = os.path.abspath(repo_path) if repo_path else None
     sys_path_added = False
+    inserted_path = None
     if abs_repo and abs_repo not in sys.path:
         sys.path.insert(0, abs_repo)
         sys_path_added = True
+        inserted_path = abs_repo
     # Ensure a fresh import space for base vs head to avoid caching collisions
     _purge_package_cache(module_hint)
     module = importlib.import_module(module_hint)
-    return LoadedModule(module=module, sys_path_added=sys_path_added)
+    return LoadedModule(module=module, sys_path_added=sys_path_added, inserted_path=inserted_path)
 
 
 class SQLAlchemyAdapter(SchemaAdapter):
@@ -77,8 +80,13 @@ class SQLAlchemyAdapter(SchemaAdapter):
         finally:
             # cleanup: purge package and sys.path insertion to avoid cross-tree bleed
             _purge_package_cache(module_hint)
-            if loaded.sys_path_added and sys.path and sys.path[0] == os.path.abspath(repo_path):
-                sys.path.pop(0)
+            if loaded.sys_path_added and loaded.inserted_path:
+                try:
+                    # remove by value if present anywhere
+                    while loaded.inserted_path in sys.path:
+                        sys.path.remove(loaded.inserted_path)
+                except ValueError:
+                    pass
 
         tables: Dict[str, Table] = {}
         for tname, satable in metadata.tables.items():

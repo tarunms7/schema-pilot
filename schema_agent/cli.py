@@ -43,6 +43,10 @@ def diff(
     base_ir: IR = adapter.emit_ir(repo_path=base_dir, module_hint=base_module)
     head_ir: IR = adapter.emit_ir(repo_path=head_dir, module_hint=head_module)
 
+    # Debug when no tables detected
+    if not base_ir.tables or not head_ir.tables:
+        console.print("[yellow]No tables detected in one of the trees. base tables=%s head tables=%s[/yellow]" % (list(base_ir.tables.keys()), list(head_ir.tables.keys())))
+
     ops = diff_ir(base_ir, head_ir, hints)
     steps = plan_postgres(base_ir, head_ir, ops, hints)
     ordered = schedule_steps(steps)
