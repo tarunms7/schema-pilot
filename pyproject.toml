@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "schema-agent"
+version = "0.1.0"
+description = "ORM-agnostic Schema Diff → Safe SQL Migration Agent (MVP: SQLAlchemy + Postgres)"
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+packages = [{ include = "schema_agent" }]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+typer = {extras = ["all"], version = "^0.12.3"}
+pydantic = "^2.7.4"
+rich = "^13.7.1"
+SQLAlchemy = "^2.0.30"
+PyYAML = "^6.0.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2.1"
+
+[tool.poetry.scripts]
+schema-agent = "schema_agent.cli:app"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+
