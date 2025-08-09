@@ -48,6 +48,10 @@ def diff(
     ordered = schedule_steps(steps)
 
     forward_sql, rollback_sql, summary = generate_postgres_sql(ordered, hints)
+    # If nothing was generated, be explicit
+    if len(ordered) == 0:
+        forward_sql = "-- no schema changes detected\n"
+        rollback_sql = "-- no schema changes detected\n"
 
     _print_summary(summary)
 

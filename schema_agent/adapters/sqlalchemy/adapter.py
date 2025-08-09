@@ -44,6 +44,16 @@ class LoadedModule:
     sys_path_added: bool
 
 
+def _purge_package_cache(module_hint: str) -> None:
+    root_pkg = module_hint.split(".")[0]
+    for key in list(sys.modules.keys()):
+        if key == root_pkg or key.startswith(root_pkg + "."):
+            try:
+                del sys.modules[key]
+            except KeyError:
+                pass
+
+
 def _import_models(repo_path: str, module_hint: Optional[str]) -> LoadedModule:
     if not module_hint:
         raise RuntimeError("module_hint is required for SQLAlchemy adapter in MVP")
@@ -52,9 +62,8 @@ def _import_models(repo_path: str, module_hint: Optional[str]) -> LoadedModule:
     if abs_repo and abs_repo not in sys.path:
         sys.path.insert(0, abs_repo)
         sys_path_added = True
-    # Ensure a fresh import for base vs head to avoid caching collisions
-    if module_hint in sys.modules:
-        del sys.modules[module_hint]
+    # Ensure a fresh import space for base vs head to avoid caching collisions
+    _purge_package_cache(module_hint)
     module = importlib.import_module(module_hint)
     return LoadedModule(module=module, sys_path_added=sys_path_added)
 
@@ -66,9 +75,8 @@ class SQLAlchemyAdapter(SchemaAdapter):
             Base = getattr(loaded.module, "Base")
             metadata = Base.metadata
         finally:
-            # cleanup: remove imported module and sys.path insertion to avoid cross-tree bleed
-            if module_hint in sys.modules:
-                del sys.modules[module_hint]
+            # cleanup: purge package and sys.path insertion to avoid cross-tree bleed
+            _purge_package_cache(module_hint)
             if loaded.sys_path_added and sys.path and sys.path[0] == os.path.abspath(repo_path):
                 sys.path.pop(0)
 
