@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Dict, List, Optional, Literal
+from pydantic import BaseModel, Field
 from pydantic import BaseModel
 
 Dialect = Literal["postgresql"]
@@ -21,7 +22,7 @@ class Index(BaseModel):
     columns: List[str]
     unique: bool = False
     method: str = "btree"
-    include: List[str] = []
+    include: List[str] = Field(default_factory=list)
 
 
 class ForeignKey(BaseModel):
@@ -38,11 +39,11 @@ class ForeignKey(BaseModel):
 class Table(BaseModel):
     name: str
     columns: Dict[str, Column]
-    primary_key: List[str] = []
-    uniques: List[List[str]] = []
-    checks: Dict[str, str] = {}
-    indexes: Dict[str, Index] = {}
-    fks: Dict[str, ForeignKey] = {}
+    primary_key: List[str] = Field(default_factory=list)
+    uniques: List[List[str]] = Field(default_factory=list)
+    checks: Dict[str, str] = Field(default_factory=dict)
+    indexes: Dict[str, Index] = Field(default_factory=dict)
+    fks: Dict[str, ForeignKey] = Field(default_factory=dict)
     partitioning: Optional[str] = None
     comment: Optional[str] = None
 
@@ -51,7 +52,7 @@ class IR(BaseModel):
     dialect: Dialect
     version: Optional[str] = None
     tables: Dict[str, Table]
-    enums: Dict[str, List[str]] = {}
-    extensions: List[str] = []
+    enums: Dict[str, List[str]] = Field(default_factory=dict)
+    extensions: List[str] = Field(default_factory=list)
 
 

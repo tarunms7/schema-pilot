@@ -1,0 +1,6 @@
+adapter: sqlalchemy
+dialect: postgresql
+base_dir: ./examples/before
+base_module: examples.before.models
+head_dir: ./examples/after
+head_module: examples.after.models

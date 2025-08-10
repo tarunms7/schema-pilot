@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Dict, List, Optional, Literal, Tuple
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from schema_agent.core.diff import Op, OpKind
 
@@ -12,7 +12,7 @@ class Step(BaseModel):
     sql: str
     phase: Literal["prep", "backfill", "tighten", "indexes", "finalize"]
     reversible: bool = True
-    depends_on: List[str] = []
+    depends_on: List[str] = Field(default_factory=list)
     destructive: bool = False
     reverse_sql: Optional[str] = None
 
@@ -99,10 +99,15 @@ def plan_postgres(base_ir, head_ir, ops: List[Op], hints: Dict) -> List[Step]:
             if not col["nullable"]:
                 if use_batched_backfill:
                     bf_sql = (
-                        f"-- Batched backfill (template):\n"
-                        f"DO $$ DECLARE _batch INT := {backfill_batch}; BEGIN\n"
+                        f"-- Batched backfill\n"
+                        f"DO $$\n"
+                        f"DECLARE _batch INT := {backfill_batch};\n"
+                        f"BEGIN\n"
                         f"  LOOP\n"
-                        f"    UPDATE {t} SET {col['name']} = {col.get('default', 'NULL')} WHERE {col['name']} IS NULL LIMIT _batch;\n"
+                        f"    UPDATE {t} SET {col['name']} = {col.get('default', 'NULL')}\n"
+                        f"    WHERE {col['name']} IS NULL AND ctid IN (\n"
+                        f"      SELECT ctid FROM {t} WHERE {col['name']} IS NULL LIMIT _batch\n"
+                        f"    );\n"
                         f"    EXIT WHEN NOT FOUND;\n"
                         f"  END LOOP;\n"
                         f"END $$;"
@@ -156,10 +161,15 @@ def plan_postgres(base_ir, head_ir, ops: List[Op], hints: Dict) -> List[Step]:
                         bf_expr = d
                 if use_batched_backfill:
                     bf_sql = (
-                        f"-- Batched backfill (template):\n"
-                        f"DO $$ DECLARE _batch INT := {backfill_batch}; BEGIN\n"
+                        f"-- Batched backfill\n"
+                        f"DO $$\n"
+                        f"DECLARE _batch INT := {backfill_batch};\n"
+                        f"BEGIN\n"
                         f"  LOOP\n"
-                        f"    UPDATE {t} SET {p['name']} = {bf_expr} WHERE {p['name']} IS NULL LIMIT _batch;\n"
+                        f"    UPDATE {t} SET {p['name']} = {bf_expr}\n"
+                        f"    WHERE {p['name']} IS NULL AND ctid IN (\n"
+                        f"      SELECT ctid FROM {t} WHERE {p['name']} IS NULL LIMIT _batch\n"
+                        f"    );\n"
                         f"    EXIT WHEN NOT FOUND;\n"
                         f"  END LOOP;\n"
                         f"END $$;"
