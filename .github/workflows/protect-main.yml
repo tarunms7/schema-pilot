@@ -1,0 +1,32 @@
+name: Enforce main branch protection and CODEOWNERS
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  require-codeowners:
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post reminder about CODEOWNERS and approvals
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: protection
+          message: |
+            This repository enforces CODEOWNERS and branch protection. PRs targeting `main` require approval from the code owner(s) and must pass CI.
+
+  block-direct-push:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Block direct pushes to main
+        run: |
+          echo "Direct pushes to main are not allowed. Configure branch protection in GitHub settings."
+          exit 1

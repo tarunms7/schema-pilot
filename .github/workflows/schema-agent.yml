@@ -1,0 +1,55 @@
+name: schema-agent
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  plan-migration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install schema-pilot
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install git+https://github.com/tarunms7/schema-pilot.git
+      - name: Capture head/base
+        run: |
+          echo "HEAD_PATH=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+          mkdir -p $RUNNER_TEMP/base
+          git --work-tree=$RUNNER_TEMP/base checkout ${{ github.event.pull_request.base.sha }} -- .
+          echo "BASE_PATH=$RUNNER_TEMP/base" >> $GITHUB_ENV
+      - name: Run schema-agent
+        run: |
+          mkdir -p artifacts
+          python -m schema_agent.cli \
+            --base-dir "$BASE_PATH" --base-module app.db.base \
+            --head-dir "$HEAD_PATH" --head-module app.db.base \
+            --dialect postgresql \
+            --out-dir artifacts
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-agent-sql
+          path: |
+            artifacts/forward.sql
+            artifacts/rollback.sql
+      - name: Comment summary to PR
+        if: always()
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: schema-agent
+          message: |
+            Schema Agent generated SQL artifacts. Download from the workflow artifacts or view a summary below.
+            
+            - forward.sql and rollback.sql are attached.
+            - Configure `--summary-json` to include a machine-readable plan.

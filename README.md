@@ -122,3 +122,41 @@ Notes:
 - The adapter isolates imports per tree; avoid global side-effects in model imports.
 - `schema_hints.yml` is optional; if not provided via `--schema-hints`, the CLI will look for `./schema_hints.yml` or `<out_dir>/schema_hints.yml`.
 - You can emit a machine-readable plan summary with `--summary-json artifacts/summary.json`.
+
+## PR comment preview
+
+The workflow posts forward/rollback SQL as PR artifacts and can be configured to comment summary/scripts on the PR. Example screenshot:
+
+![Schema Agent PR Comment](docs/assets/schema-agent-pr-comment.png)
+
+## Code ownership and branch protection
+
+To enforce a single code owner and prevent direct merges to `main`:
+
+1. Add `CODEOWNERS` at `.github/CODEOWNERS`:
+
+```
+* @YOUR_GITHUB_USERNAME
+```
+
+2. Enable branch protection on `main` in your repository settings:
+
+- Require pull request reviews before merging (1+ approval)
+- Require review from Code Owners
+- Dismiss stale approvals when new commits are pushed
+- Require status checks to pass before merging (enable CI checks)
+- Restrict who can push to matching branches (leave empty to force PRs)
+
+3. Optional: This repo includes a helper workflow `.github/workflows/protect-main.yml` that posts a reminder on PRs and blocks direct pushes to `main`.
+
+## Roadmap and enhancements
+
+Planned improvements to make the project more sellable, efficient, scalable, readable, and maintainable:
+
+- Solid architecture: Extract clear boundaries between IR, planner, SQL generator, adapters; add dependency inversion via registries and interfaces.
+- Performance: Cache IR for unchanged modules; detect and skip no-op diffs; optional sampling mode for very large schemas.
+- Extensibility: Add Django ORM adapter; support MySQL and SQLite planners; plugin hooks for custom risk policies.
+- Observability: Structured logging with log levels; timing metrics for each phase; tracing hooks.
+- DX: Pre-commit with ruff/black/mypy; type hints across modules; richer CLI help and examples; config schema validation.
+- CI/CD: Lint + tests in GitHub Actions matrix (3.11/3.12); publish package to PyPI on tagged release.
+- Docs: Architecture overview, flow diagrams, FAQ, and advanced migration patterns.
