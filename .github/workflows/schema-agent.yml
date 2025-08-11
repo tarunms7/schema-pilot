@@ -11,6 +11,8 @@ permissions:
 jobs:
   plan-migration:
     runs-on: ubuntu-latest
+    env:
+      MODULE_HINT: app.db.base
     steps:
       - uses: actions/checkout@v4
         with:
@@ -28,12 +30,14 @@ jobs:
           mkdir -p $RUNNER_TEMP/base
           git --work-tree=$RUNNER_TEMP/base checkout ${{ github.event.pull_request.base.sha }} -- .
           echo "BASE_PATH=$RUNNER_TEMP/base" >> $GITHUB_ENV
+          # Ensure typical src/ layouts are importable in both trees
+          echo "PYTHONPATH=$GITHUB_WORKSPACE:$GITHUB_WORKSPACE/src:$RUNNER_TEMP/base:$RUNNER_TEMP/base/src" >> $GITHUB_ENV
       - name: Run schema-agent
         run: |
           mkdir -p artifacts
           python -m schema_agent.cli \
-            --base-dir "$BASE_PATH" --base-module app.db.base \
-            --head-dir "$HEAD_PATH" --head-module app.db.base \
+            --base-dir "$BASE_PATH" --base-module "$MODULE_HINT" \
+            --head-dir "$HEAD_PATH" --head-module "$MODULE_HINT" \
             --dialect postgresql \
             --out-dir artifacts
       - name: Upload artifacts
