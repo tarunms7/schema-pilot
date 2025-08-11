@@ -35,11 +35,17 @@ jobs:
       - name: Run schema-agent
         run: |
           mkdir -p artifacts
-          python -m schema_agent.cli \
-            --base-dir "$BASE_PATH" --base-module "$MODULE_HINT" \
-            --head-dir "$HEAD_PATH" --head-module "$MODULE_HINT" \
-            --dialect postgresql \
-            --out-dir artifacts
+          if [ -f "schema-agent.yml" ]; then
+            echo "Detected schema-agent.yml → running config-driven mode"
+            python -m schema_agent.cli run -c ./schema-agent.yml --out-dir artifacts
+          else
+            echo "No schema-agent.yml found → falling back to module-hint mode ($MODULE_HINT)"
+            python -m schema_agent.cli \
+              --base-dir "$BASE_PATH" --base-module "$MODULE_HINT" \
+              --head-dir "$HEAD_PATH" --head-module "$MODULE_HINT" \
+              --dialect postgresql \
+              --out-dir artifacts
+          fi
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
